@@ -52,12 +52,7 @@ while true; do
             read genre
 
             echo "Top 5 tracks by popularity in \"$genre\":"
-            awk -v g="$genre" '
-            BEGIN { FS="\t"; IGNORECASE=1 }
-            tolower($20) ~ tolower(g) {
-                print $2 "|" $4 "|" $5 "|" $9 "|" $17
-            }' "$FILE" | sort -t'|' -k3,3nr | head -n 5 | 
-            awk -F'|' '{printf "%s;%s\t%s\t%s\t%.3f\t%.3f\n", $1, $2, $3, $4, $5}'
+            sort -k5 -nr $FILE | awk -v g=$genre'$20~"$g" {printf "%s\t%s\t%s\t%.3f\t%.3f\n", $2, $4, $5, $9, $17}' | head -n 5
             ;;
 
         3)
