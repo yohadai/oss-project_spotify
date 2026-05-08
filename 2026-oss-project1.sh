@@ -39,12 +39,13 @@ while true; do
             read track
 
             # Case-insensitive search
+	    printf "Serch results for \"$artist\"/\"$track\":\n\n"
 	    printf "artist\ttrack_name\tenergy\ttempo\n"
             awk -v a="$artist" -v t="$track" '
-            BEGIN { FS="\t"; IGNORECASE=1 }
-            tolower($2) ~ tolower(a) && tolower($4) ~ tolower(t) {
-                printf "%s\t%s\t%.3f\t%.3f\n", $2, $4, $9, $18
-            }' "$FILE" | head -n 10
+            BEGIN { FS="\t"; }
+	    NR > 1 && tolower($2) == tolower(a) && tolower($4) == tolower(t) {
+                printf "%s\t%s\t%s\t%s\n", $2, $4, $9, $18
+            }' "$FILE"
             ;;
 
         2)
@@ -52,8 +53,13 @@ while true; do
             read genre
 
             echo "Top 5 tracks by popularity in \"$genre\":"
-            sort -k5 -nr $FILE | awk -v g=$genre'$20~"$g" {printf "%s\t%s\t%s\t%.3f\t%.3f\n", $2, $4, $5, $9, $17}' | head -n 5
-            ;;
+	    
+	    awk -v g="$genre" '
+	    BEGIN { FS="\t"; IGNORECASE=1 }
+	    NR > 1 && tolower($20) == tolower(g) {
+    	    	printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", $1, $2, $4, $5, $9, $17, $20
+	    }' "$FILE" | head -n 5
+	    ;;
 
         3)
             echo "Top 5 longest tracks by duration:"
