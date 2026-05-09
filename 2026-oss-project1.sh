@@ -96,7 +96,7 @@ while true; do
             genre_col = $20;
             sub(/\r/, "", genre_col);
 
-            key = $2 ":" $4
+            key = $2 "|" $3 "|" $4
 	    if (!(key in genres)) {
 		genres[key] = genre_col
 	    }
