@@ -41,9 +41,9 @@ while true; do
             # Case-insensitive search
 	    printf "Serch results for \"$artist\"/\"$track\":\n\n"
 	    printf "artist\ttrack_name\tenergy\ttempo\n"
-            awk -v a="$artist" -v t="$track" '
-            BEGIN { FS="\t"; }
-	    NR > 1 && tolower($2) == tolower(a) && tolower($4) == tolower(t) {
+            LC_ALL=C awk -v a="$artist" -v t="$track" '
+            BEGIN { FS="\t"; IGNORECASE=1 }
+	    tolower($2) == tolower(a) && tolower($4) == tolower(t) {
                 printf "%s\t%s\t%s\t%s\n", $2, $4, $9, $18
             }' "$FILE"
             ;;
@@ -53,12 +53,20 @@ while true; do
             read genre
 
             echo "Top 5 tracks by popularity in \"$genre\":"
-	    
-	    awk -v g="$genre" '
-	    BEGIN { FS="\t"; IGNORECASE=1 }
-	    NR > 1 && tolower($20) == tolower(g) {
-    	    	printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", $1, $2, $4, $5, $9, $17, $20
-	    }' "$FILE" | head -n 5
+
+	    LC_ALL=C awk -v g="$genre" '
+	    BEGIN { FS="\t" }
+	    NR > 1 {
+    		# 20번 컬럼 끝의 \r 제거
+    	        genre_col = $20;
+    	        sub(/\r/, "", genre_col);
+
+    		# 대소문자 무시 비교
+    	        if (tolower(genre_col) == tolower(g)) {
+            	    # 출력 순서: $2(Artist), $4(Track), $5(Pop), $9(Energy), $17(valence)
+               	    printf "%s\t%s\t%s\t%s\t%s\n", $2, $4, $5, $9, $17
+   	        }
+	    }' "$FILE" | sort -t$'\t' -k3,3nr | head -n 5
 	    ;;
 
         3)
