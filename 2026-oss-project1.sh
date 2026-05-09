@@ -72,7 +72,7 @@ while true; do
         3)
             echo "Top 5 longest tracks by duration:"
             # Deduplicate + convert ms to mm:ss + sort
-            awk '
+            LC_ALL=C awk '
             BEGIN { FS="\t" }
             {
                 key = $2 "|" $4
@@ -89,25 +89,33 @@ while true; do
 
         4)
             echo "Tracks appearing in multiple genres (top 5 by popularity):"
-            awk '
+            LC_ALL=C awk '
             BEGIN { FS="\t" }
             {
-            key = $2 "|" $4
-            genres[key] = genres[key] ? genres[key] "|" $20 : $20
+	    # 20번 컬럼 끝의 \r 제거
+            genre_col = $20;
+            sub(/\r/, "", genre_col);
+
+            key = $2 ":" $4
+	    if (!(key in genres)) {
+		genres[key] = genre_col
+	    }
+    	    else {
+		genres[key] = genres[key] "|" genre_col
+	    }
             pop[key] = $5
             artist[key] = $2
             track[key] = $4
+	    count[key]++
             }
             END {
                 for (k in genres) {
-                    n = split(genres[k], arr, "\\|")
-                    if (n >= 2) {
-                        gsub(/\|/, "|", genres[k])
-                        printf "%s|%s|%s|%s\n", artist[k], track[k], genres[k], pop[k]
-                    }
+		    if (count[k] > 1) {
+                    	printf "%s\t%s\t%s\t%s\t%s\n", track[k], artist[k], pop[k], genres[k], count[k]
+	    	    }
                 }
-            }' "$FILE" | sort -t'|' -k4,4nr | head -n 5 | 
-            awk -F'|' '{printf "%s;%s\t%s\t%s\n", $1, $2, $3, $4}'
+            }' "$FILE" | sort -t$'\t' -k3,3nr |
+	    awk 'BEGIN { FS="\t" }{ printf "%s\t%s\t%s\t%s\n", $1, $2, $4, $3 }' | head -n 5
             ;;
 
         5)
