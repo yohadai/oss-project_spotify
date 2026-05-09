@@ -111,11 +111,11 @@ while true; do
             END {
                 for (k in genres) {
 		    if (count[k] > 1) {
-                    	printf "%s\t%s\t%s\t%s\t%s\n", track[k], artist[k], pop[k], genres[k], count[k]
+                    	printf "%s\t%s\t%s\t%s\n", track[k], artist[k], pop[k], genres[k]
 	    	    }
                 }
             }' "$FILE" | sort -t$'\t' -k3,3nr |
-	    awk 'BEGIN { FS="\t" }{ printf "%s\t%s\t%s\t%s\n", $1, $2, $4, $3 }' | head -n 5
+	    awk 'BEGIN { FS="\t" }{ printf "%s\t%s\t%s\n", $1, $2, $4 }' | head -n 5
             ;;
 
         5)
