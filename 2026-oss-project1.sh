@@ -122,21 +122,24 @@ while true; do
             echo -n "Enter minimum popularity threshold: "
             read thresh
 
-            awk -v th="$thresh" '
+            LC_ALL=C awk -v th="$thresh" '
             BEGIN { FS="\t"; count=0; sum_d=0; sum_e=0; sum_v=0 }
-            {
+            NR > 1 {
                 key = $2 "|" $4
-                if (!(key in seen) && $5 >= th) {
+                if (!(key in seen)) {
                     seen[key] = 1
-                    count++
-                    sum_d += $8
-                    sum_e += $9
-                    sum_v += $17
+
+		    if ($5 >= th) {
+                        count++
+                        sum_d += $8
+                        sum_e += $9
+                        sum_v += $17
+	    	    }	
                 }
             }
             END {
-                if (count == 0) count = 1
                 printf "popularity >= %d tracks: %d\n", th, count
+                if (count == 0) count = 1
                 printf "avg danceability: %.2f\n", sum_d/count
                 printf "avg energy: %.2f\n", sum_e/count
                 printf "avg valence: %.2f\n", sum_v/count
