@@ -39,12 +39,13 @@ while true; do
             read track
 
             # Case-insensitive search
+	    printf "Serch results for \"$artist\"/\"$track\":\n\n"
 	    printf "artist\ttrack_name\tenergy\ttempo\n"
-            awk -v a="$artist" -v t="$track" '
+            LC_ALL=C awk -v a="$artist" -v t="$track" '
             BEGIN { FS="\t"; IGNORECASE=1 }
-            tolower($2) ~ tolower(a) && tolower($4) ~ tolower(t) {
-                printf "%s\t%s\t%.3f\t%.3f\n", $2, $4, $9, $18
-            }' "$FILE" | head -n 10
+	    tolower($2) == tolower(a) && tolower($4) == tolower(t) {
+                printf "%s\t%s\t%s\t%s\n", $2, $4, $9, $18
+            }' "$FILE"
             ;;
 
         2)
@@ -52,13 +53,26 @@ while true; do
             read genre
 
             echo "Top 5 tracks by popularity in \"$genre\":"
-            sort -k5 -nr $FILE | awk -v g=$genre'$20~"$g" {printf "%s\t%s\t%s\t%.3f\t%.3f\n", $2, $4, $5, $9, $17}' | head -n 5
-            ;;
+
+	    LC_ALL=C awk -v g="$genre" '
+	    BEGIN { FS="\t" }
+	    NR > 1 {
+    		# 20번 컬럼 끝의 \r 제거
+    	        genre_col = $20;
+    	        sub(/\r/, "", genre_col);
+
+    		# 대소문자 무시 비교
+    	        if (tolower(genre_col) == tolower(g)) {
+            	    # 출력 순서: $2(Artist), $4(Track), $5(Pop), $9(Energy), $17(valence)
+               	    printf "%s\t%s\t%s\t%s\t%s\n", $2, $4, $5, $9, $17
+   	        }
+	    }' "$FILE" | sort -t$'\t' -k3,3nr | head -n 5
+	    ;;
 
         3)
             echo "Top 5 longest tracks by duration:"
             # Deduplicate + convert ms to mm:ss + sort
-            awk '
+            LC_ALL=C awk '
             BEGIN { FS="\t" }
             {
                 key = $2 "|" $4
@@ -75,46 +89,57 @@ while true; do
 
         4)
             echo "Tracks appearing in multiple genres (top 5 by popularity):"
-            awk '
+            LC_ALL=C awk '
             BEGIN { FS="\t" }
             {
-            key = $2 "|" $4
-            genres[key] = genres[key] ? genres[key] "|" $20 : $20
+	    # 20번 컬럼 끝의 \r 제거
+            genre_col = $20;
+            sub(/\r/, "", genre_col);
+
+            key = $2 "|" $3 "|" $4
+	    if (!(key in genres)) {
+		genres[key] = genre_col
+	    }
+    	    else {
+		genres[key] = genres[key] "|" genre_col
+	    }
             pop[key] = $5
             artist[key] = $2
             track[key] = $4
+	    count[key]++
             }
             END {
                 for (k in genres) {
-                    n = split(genres[k], arr, "\\|")
-                    if (n >= 2) {
-                        gsub(/\|/, "|", genres[k])
-                        printf "%s|%s|%s|%s\n", artist[k], track[k], genres[k], pop[k]
-                    }
+		    if (count[k] > 1) {
+                    	printf "%s\t%s\t%s\t%s\n", track[k], artist[k], pop[k], genres[k]
+	    	    }
                 }
-            }' "$FILE" | sort -t'|' -k4,4nr | head -n 5 | 
-            awk -F'|' '{printf "%s;%s\t%s\t%s\n", $1, $2, $3, $4}'
+            }' "$FILE" | sort -t$'\t' -k3,3nr |
+	    awk 'BEGIN { FS="\t" }{ printf "%s\t%s\t%s\n", $1, $2, $4 }' | head -n 5
             ;;
 
         5)
             echo -n "Enter minimum popularity threshold: "
             read thresh
 
-            awk -v th="$thresh" '
+            LC_ALL=C awk -v th="$thresh" '
             BEGIN { FS="\t"; count=0; sum_d=0; sum_e=0; sum_v=0 }
-            {
+            NR > 1 {
                 key = $2 "|" $4
-                if (!(key in seen) && $5 >= th) {
+                if (!(key in seen)) {
                     seen[key] = 1
-                    count++
-                    sum_d += $8
-                    sum_e += $9
-                    sum_v += $17
+
+		    if ($5 >= th) {
+                        count++
+                        sum_d += $8
+                        sum_e += $9
+                        sum_v += $17
+	    	    }	
                 }
             }
             END {
-                if (count == 0) count = 1
                 printf "popularity >= %d tracks: %d\n", th, count
+                if (count == 0) count = 1
                 printf "avg danceability: %.2f\n", sum_d/count
                 printf "avg energy: %.2f\n", sum_e/count
                 printf "avg valence: %.2f\n", sum_v/count
